@@ -42,11 +42,15 @@ jobs:
       - run: pip install .
       - name: Install kubeconform and promtool
         run: |
+          # Pinned versions go into a job-local directory placed first on PATH.
+          # The runner image already has some of these tools in /usr/local/bin,
+          # owned by root, and they cannot be replaced there.
+          bin="$RUNNER_TEMP/bin"; mkdir -p "$bin"; echo "$bin" >> "$GITHUB_PATH"
           curl -sSfL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
-            | tar -xz -C /usr/local/bin kubeconform
+            | tar -xz -C "$bin" kubeconform
           prom="prometheus-${PROMETHEUS_VERSION}.linux-amd64"
           curl -sSfL "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/${prom}.tar.gz" \
-            | tar -xz --strip-components=1 -C /usr/local/bin "${prom}/promtool"
+            | tar -xz --strip-components=1 -C "$bin" "${prom}/promtool"
       - name: Render examples and services
         run: onboardctl render examples/api-strict.yaml examples/batch-relaxed.yaml services/ -o rendered --rules-dir rendered/rules
       - name: kubeconform
@@ -67,6 +71,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: shellcheck
         run: |
+          bin="$RUNNER_TEMP/bin"; mkdir -p "$bin"
           curl -sSfL "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" \
-            | tar -xJ --strip-components=1 -C /usr/local/bin "shellcheck-${SHELLCHECK_VERSION}/shellcheck"
-          shellcheck scripts/*.sh
+            | tar -xJ --strip-components=1 -C "$bin" "shellcheck-${SHELLCHECK_VERSION}/shellcheck"
+          "$bin/shellcheck" scripts/*.sh

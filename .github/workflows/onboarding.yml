@@ -69,11 +69,15 @@ jobs:
       - name: Install kubeconform and promtool
         if: steps.specs.outputs.count != '0'
         run: |
+          # Pinned versions go into a job-local directory placed first on PATH.
+          # The runner image already has some of these tools in /usr/local/bin,
+          # owned by root, and they cannot be replaced there.
+          bin="$RUNNER_TEMP/bin"; mkdir -p "$bin"; echo "$bin" >> "$GITHUB_PATH"
           curl -sSfL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
-            | tar -xz -C /usr/local/bin kubeconform
+            | tar -xz -C "$bin" kubeconform
           prom="prometheus-${PROMETHEUS_VERSION}.linux-amd64"
           curl -sSfL "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/${prom}.tar.gz" \
-            | tar -xz --strip-components=1 -C /usr/local/bin "${prom}/promtool"
+            | tar -xz --strip-components=1 -C "$bin" "${prom}/promtool"
       - name: Check rendered manifests
         if: steps.specs.outputs.count != '0'
         run: |
@@ -101,11 +105,15 @@ jobs:
       - run: pip install .
       - name: Install kind, kubectl and helm
         run: |
-          curl -sSfLo /usr/local/bin/kind "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64"
-          curl -sSfLo /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
-          chmod +x /usr/local/bin/kind /usr/local/bin/kubectl
+          # Pinned versions go into a job-local directory placed first on PATH.
+          # The runner image already has some of these tools in /usr/local/bin,
+          # owned by root, and they cannot be replaced there.
+          bin="$RUNNER_TEMP/bin"; mkdir -p "$bin"; echo "$bin" >> "$GITHUB_PATH"
+          curl -sSfLo "$bin/kind" "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64"
+          curl -sSfLo "$bin/kubectl" "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          chmod +x "$bin/kind" "$bin/kubectl"
           curl -sSfL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" \
-            | tar -xz --strip-components=1 -C /usr/local/bin linux-amd64/helm
+            | tar -xz --strip-components=1 -C "$bin" linux-amd64/helm
       - name: Create test cluster with kube-prometheus-stack
         run: bash scripts/dev-cluster.sh up
       - name: Onboard every service
@@ -130,6 +138,10 @@ jobs:
       - name: Dump cluster state on failure
         if: failure()
         run: |
+          if ! kubectl cluster-info >/dev/null 2>&1; then
+            echo "No cluster to inspect: it was never created or is unreachable."
+            exit 0
+          fi
           kubectl get pods -A -o wide
           kubectl get events -A --sort-by=.lastTimestamp | tail -50
       - name: Delete cluster
