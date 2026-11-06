@@ -1,0 +1,10 @@
+{% import "_macros.j2" as m %}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+{{ m.metadata(names.responder_role, labels, annotations, namespace) -}}
+# Lets the remediation responder restart this one Deployment and nothing else.
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: [{{ remediation.restart_deployment | tojson }}]
+    verbs: ["get", "patch"]

@@ -1,0 +1,4 @@
+# Shell scripts and generated manifests must keep LF endings: bash rejects
+# CRLF, and the golden-file tests compare bytes.
+* text=auto eol=lf
+*.png binary

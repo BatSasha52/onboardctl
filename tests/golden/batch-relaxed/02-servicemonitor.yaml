@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: invoice-batch
+  namespace: invoice-batch
+  labels:
+    app.kubernetes.io/managed-by: onboardctl
+    onboardctl/service: invoice-batch
+    onboardctl/team: billing
+  annotations:
+    onboardctl/spec-hash: "383bd0dd7ac037ed"
+spec:
+  namespaceSelector:
+    matchNames:
+      - invoice-batch
+  selector:
+    matchLabels:
+      app: invoice-batch
+      component: worker
+  endpoints:
+    - port: metrics
+      path: /internal/metrics
+      interval: 60s
+      relabelings:
+        # The generated rules select on job="invoice-batch", whatever the
+        # Service object itself is called.
+        - action: replace
+          targetLabel: job
+          replacement: invoice-batch

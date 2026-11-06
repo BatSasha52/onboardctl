@@ -1,0 +1,9 @@
+{% import "_macros.j2" as m %}
+apiVersion: v1
+kind: ResourceQuota
+{{ m.metadata(names.quota, labels, annotations, namespace) -}}
+spec:
+  hard:
+    pods: {{ quota.pods | string | yaml_str }}
+    requests.cpu: {{ quota.cpu | yaml_str }}
+    requests.memory: {{ quota.memory | yaml_str }}

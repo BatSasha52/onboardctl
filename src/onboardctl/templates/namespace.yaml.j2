@@ -1,0 +1,4 @@
+{% import "_macros.j2" as m %}
+apiVersion: v1
+kind: Namespace
+{{ m.metadata(namespace, namespace_labels, namespace_annotations) -}}

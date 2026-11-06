@@ -1,0 +1,20 @@
+# Deliberately broken, to show the validation errors:
+#   onboardctl validate examples/invalid.yaml
+apiVersion: onboardctl/v1
+name: Checkout_API
+team: payments
+owners:
+  - not-an-email
+metrics:
+  port: 8080
+  pathh: /metrics
+slo:
+  availability:
+    target: 100
+  latency:
+    thresholdSeconds: 0.25
+alerting:
+  defaultReceiver: pager
+  receivers:
+    - name: pager
+      webhookUrl: hooks.example.com/pager

@@ -1,0 +1,19 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: checkout-api-responder
+  namespace: payments-checkout
+  labels:
+    app.kubernetes.io/managed-by: onboardctl
+    onboardctl/service: checkout-api
+    onboardctl/team: payments
+  annotations:
+    onboardctl/spec-hash: "7d28ca8a1a42e699"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: checkout-api-responder
+subjects:
+  - kind: ServiceAccount
+    name: onboardctl-responder
+    namespace: onboardctl-system

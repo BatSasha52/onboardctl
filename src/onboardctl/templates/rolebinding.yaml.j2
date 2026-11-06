@@ -1,0 +1,12 @@
+{% import "_macros.j2" as m %}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+{{ m.metadata(names.responder_role, labels, annotations, namespace) -}}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ names.responder_role }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ responder.service_account }}
+    namespace: {{ responder.namespace }}

@@ -1,0 +1,174 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: invoice-batch-slo
+  namespace: invoice-batch
+  labels:
+    app.kubernetes.io/managed-by: onboardctl
+    onboardctl/service: invoice-batch
+    onboardctl/team: billing
+  annotations:
+    onboardctl/spec-hash: "383bd0dd7ac037ed"
+spec:
+  groups:
+    - name: onboardctl.invoice-batch.recording
+      rules:
+        - record: slo:availability_error_ratio:rate5m
+          expr: |-
+            sum by (namespace, job) (rate(http_requests_total{namespace="invoice-batch", job="invoice-batch", code=~"5..|429"}[5m]))
+            /
+            sum by (namespace, job) (rate(http_requests_total{namespace="invoice-batch", job="invoice-batch"}[5m]))
+        - record: slo:availability_error_ratio:rate30m
+          expr: |-
+            sum by (namespace, job) (rate(http_requests_total{namespace="invoice-batch", job="invoice-batch", code=~"5..|429"}[30m]))
+            /
+            sum by (namespace, job) (rate(http_requests_total{namespace="invoice-batch", job="invoice-batch"}[30m]))
+        - record: slo:availability_error_ratio:rate1h
+          expr: |-
+            sum by (namespace, job) (rate(http_requests_total{namespace="invoice-batch", job="invoice-batch", code=~"5..|429"}[1h]))
+            /
+            sum by (namespace, job) (rate(http_requests_total{namespace="invoice-batch", job="invoice-batch"}[1h]))
+        - record: slo:availability_error_ratio:rate6h
+          expr: |-
+            sum by (namespace, job) (rate(http_requests_total{namespace="invoice-batch", job="invoice-batch", code=~"5..|429"}[6h]))
+            /
+            sum by (namespace, job) (rate(http_requests_total{namespace="invoice-batch", job="invoice-batch"}[6h]))
+        - record: slo:availability_error_ratio:rate3d
+          expr: |-
+            sum by (namespace, job) (rate(http_requests_total{namespace="invoice-batch", job="invoice-batch", code=~"5..|429"}[3d]))
+            /
+            sum by (namespace, job) (rate(http_requests_total{namespace="invoice-batch", job="invoice-batch"}[3d]))
+        - record: slo:latency_error_ratio:rate5m
+          expr: |-
+            1 - (
+              sum by (namespace, job) (rate(http_request_duration_seconds_bucket{namespace="invoice-batch", job="invoice-batch", le="2.5"}[5m]))
+              /
+              sum by (namespace, job) (rate(http_request_duration_seconds_count{namespace="invoice-batch", job="invoice-batch"}[5m]))
+            )
+        - record: slo:latency_error_ratio:rate30m
+          expr: |-
+            1 - (
+              sum by (namespace, job) (rate(http_request_duration_seconds_bucket{namespace="invoice-batch", job="invoice-batch", le="2.5"}[30m]))
+              /
+              sum by (namespace, job) (rate(http_request_duration_seconds_count{namespace="invoice-batch", job="invoice-batch"}[30m]))
+            )
+        - record: slo:latency_error_ratio:rate1h
+          expr: |-
+            1 - (
+              sum by (namespace, job) (rate(http_request_duration_seconds_bucket{namespace="invoice-batch", job="invoice-batch", le="2.5"}[1h]))
+              /
+              sum by (namespace, job) (rate(http_request_duration_seconds_count{namespace="invoice-batch", job="invoice-batch"}[1h]))
+            )
+        - record: slo:latency_error_ratio:rate6h
+          expr: |-
+            1 - (
+              sum by (namespace, job) (rate(http_request_duration_seconds_bucket{namespace="invoice-batch", job="invoice-batch", le="2.5"}[6h]))
+              /
+              sum by (namespace, job) (rate(http_request_duration_seconds_count{namespace="invoice-batch", job="invoice-batch"}[6h]))
+            )
+        - record: slo:latency_error_ratio:rate3d
+          expr: |-
+            1 - (
+              sum by (namespace, job) (rate(http_request_duration_seconds_bucket{namespace="invoice-batch", job="invoice-batch", le="2.5"}[3d]))
+              /
+              sum by (namespace, job) (rate(http_request_duration_seconds_count{namespace="invoice-batch", job="invoice-batch"}[3d]))
+            )
+    - name: onboardctl.invoice-batch.alerts
+      rules:
+        - alert: ErrorBudgetBurn
+          expr: |-
+            slo:availability_error_ratio:rate1h{namespace="invoice-batch", job="invoice-batch"} > (13.44 * 0.01)
+            and
+            slo:availability_error_ratio:rate5m{namespace="invoice-batch", job="invoice-batch"} > (13.44 * 0.01)
+          labels:
+            long_window: "1h"
+            service: invoice-batch
+            severity: critical
+            slo: availability
+            team: billing
+          annotations:
+            description: "SLO: 99% of requests succeed over 28d. The error ratio over the last 1h and 5m is above 13.44 times the budget; at this rate 2% of the 28d budget is spent within 1h."
+            summary: "invoice-batch is burning its availability error budget 13.44x faster than sustainable"
+        - alert: ErrorBudgetBurn
+          expr: |-
+            slo:availability_error_ratio:rate6h{namespace="invoice-batch", job="invoice-batch"} > (5.6 * 0.01)
+            and
+            slo:availability_error_ratio:rate30m{namespace="invoice-batch", job="invoice-batch"} > (5.6 * 0.01)
+          labels:
+            long_window: "6h"
+            service: invoice-batch
+            severity: critical
+            slo: availability
+            team: billing
+          annotations:
+            description: "SLO: 99% of requests succeed over 28d. The error ratio over the last 6h and 30m is above 5.6 times the budget; at this rate 5% of the 28d budget is spent within 6h."
+            summary: "invoice-batch is burning its availability error budget 5.6x faster than sustainable"
+        - alert: ErrorBudgetBurn
+          expr: |-
+            slo:availability_error_ratio:rate3d{namespace="invoice-batch", job="invoice-batch"} > (0.9333 * 0.01)
+            and
+            slo:availability_error_ratio:rate6h{namespace="invoice-batch", job="invoice-batch"} > (0.9333 * 0.01)
+          labels:
+            long_window: "3d"
+            service: invoice-batch
+            severity: warning
+            slo: availability
+            team: billing
+          annotations:
+            description: "SLO: 99% of requests succeed over 28d. The error ratio over the last 3d and 6h is above 0.9333 times the budget; at this rate 10% of the 28d budget is spent within 3d."
+            summary: "invoice-batch is burning its availability error budget 0.9333x faster than sustainable"
+        - alert: ErrorBudgetBurn
+          expr: |-
+            slo:latency_error_ratio:rate1h{namespace="invoice-batch", job="invoice-batch"} > (13.44 * 0.05)
+            and
+            slo:latency_error_ratio:rate5m{namespace="invoice-batch", job="invoice-batch"} > (13.44 * 0.05)
+          labels:
+            long_window: "1h"
+            service: invoice-batch
+            severity: critical
+            slo: latency
+            team: billing
+          annotations:
+            description: "SLO: 95% of requests faster than 2.5s over 28d. The error ratio over the last 1h and 5m is above 13.44 times the budget; at this rate 2% of the 28d budget is spent within 1h."
+            summary: "invoice-batch is burning its latency error budget 13.44x faster than sustainable"
+        - alert: ErrorBudgetBurn
+          expr: |-
+            slo:latency_error_ratio:rate6h{namespace="invoice-batch", job="invoice-batch"} > (5.6 * 0.05)
+            and
+            slo:latency_error_ratio:rate30m{namespace="invoice-batch", job="invoice-batch"} > (5.6 * 0.05)
+          labels:
+            long_window: "6h"
+            service: invoice-batch
+            severity: critical
+            slo: latency
+            team: billing
+          annotations:
+            description: "SLO: 95% of requests faster than 2.5s over 28d. The error ratio over the last 6h and 30m is above 5.6 times the budget; at this rate 5% of the 28d budget is spent within 6h."
+            summary: "invoice-batch is burning its latency error budget 5.6x faster than sustainable"
+        - alert: ErrorBudgetBurn
+          expr: |-
+            slo:latency_error_ratio:rate3d{namespace="invoice-batch", job="invoice-batch"} > (0.9333 * 0.05)
+            and
+            slo:latency_error_ratio:rate6h{namespace="invoice-batch", job="invoice-batch"} > (0.9333 * 0.05)
+          labels:
+            long_window: "3d"
+            service: invoice-batch
+            severity: warning
+            slo: latency
+            team: billing
+          annotations:
+            description: "SLO: 95% of requests faster than 2.5s over 28d. The error ratio over the last 3d and 6h is above 0.9333 times the budget; at this rate 10% of the 28d budget is spent within 3d."
+            summary: "invoice-batch is burning its latency error budget 0.9333x faster than sustainable"
+        - alert: ScrapeTargetMissing
+          expr: |-
+            max by (namespace, job) (up{namespace="invoice-batch", job="invoice-batch"}) == 0
+            or
+            absent(up{namespace="invoice-batch", job="invoice-batch"})
+          for: 5m
+          labels:
+            service: invoice-batch
+            severity: warning
+            team: billing
+          annotations:
+            description: "No healthy scrape target for this service for 5 minutes, so its SLO rules have no data and its burn-rate alerts cannot fire."
+            summary: "Prometheus cannot scrape invoice-batch"

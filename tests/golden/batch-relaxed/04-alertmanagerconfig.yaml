@@ -1,0 +1,31 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: invoice-batch-routing
+  namespace: invoice-batch
+  labels:
+    app.kubernetes.io/managed-by: onboardctl
+    onboardctl/service: invoice-batch
+    onboardctl/team: billing
+  annotations:
+    onboardctl/spec-hash: "383bd0dd7ac037ed"
+spec:
+  # The operator also adds a namespace="invoice-batch" matcher, so this
+  # route only ever sees alerts from this namespace.
+  route:
+    receiver: billing-tickets
+    groupBy:
+      - alertname
+      - slo
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+    matchers:
+      - name: service
+        matchType: "="
+        value: invoice-batch
+  receivers:
+    - name: billing-tickets
+      webhookConfigs:
+        - url: "https://hooks.example.com/billing/tickets"
+          sendResolved: true

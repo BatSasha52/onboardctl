@@ -1,0 +1,45 @@
+# A latency-sensitive public API: tight availability and latency targets,
+# critical alerts page the on-call rotation, everything else becomes a ticket.
+apiVersion: onboardctl/v1
+name: checkout-api
+team: payments
+owners:
+  - payments-oncall@example.com
+  - "@example-org/payments"
+description: Public checkout API used by the web and mobile apps
+namespace: payments-checkout
+
+metrics:
+  port: http-metrics          # name of the port on the Service
+  path: /metrics
+  interval: 15s
+
+slo:
+  window: 30d
+  availability:
+    target: 99.9              # percent of requests that do not fail
+  latency:
+    thresholdSeconds: 0.25    # must be one of the histogram's bucket bounds
+    target: 99                # percent of requests faster than the threshold
+
+alerting:
+  defaultReceiver: payments-tickets
+  receivers:
+    - name: payments-pager
+      webhookUrl: https://hooks.example.com/payments/pager
+    - name: payments-tickets
+      webhookUrl: https://hooks.example.com/payments/tickets
+  routes:
+    - severity: critical
+      receiver: payments-pager
+  runbookUrl: https://runbooks.example.com/payments/checkout-api
+
+quota:
+  cpu: "4"
+  memory: 8Gi
+  pods: 40
+
+# Opt in to the platform responder: when the fast availability burn-rate
+# alert fires, it may restart this Deployment (at most once per cooldown).
+remediation:
+  restartDeployment: checkout-api

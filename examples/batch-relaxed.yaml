@@ -1,0 +1,36 @@
+# An internal batch service: a looser target over a 28-day window, a slow
+# latency objective, throttling counted as failure, no dashboard, and every
+# alert goes to the team's ticket queue.
+apiVersion: onboardctl/v1
+name: invoice-batch
+team: billing
+owners:
+  - billing-team@example.com
+# No namespace given: it defaults to the service name.
+
+metrics:
+  port: metrics
+  path: /internal/metrics
+  interval: 60s
+  selector:                   # labels on the Service; default is app.kubernetes.io/name
+    app: invoice-batch
+    component: worker
+
+slo:
+  window: 28d
+  availability:
+    target: 99
+  latency:
+    thresholdSeconds: 2.5
+    target: 95
+  metrics:
+    errorSelector: 'code=~"5..|429"'
+
+alerting:
+  defaultReceiver: billing-tickets
+  receivers:
+    - name: billing-tickets
+      webhookUrl: https://hooks.example.com/billing/tickets
+
+dashboard:
+  enabled: false

@@ -1,0 +1,49 @@
+# Static checks of the Azure reference module. Nothing here has credentials
+# or runs plan/apply: the module is validated, not deployed.
+name: terraform
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+  pull_request:
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TERRAFORM_VERSION: 1.17.1
+  TFLINT_VERSION: v0.65.0
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: Install terraform and tflint
+        run: |
+          curl -sSfLo /tmp/terraform.zip "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+          curl -sSfLo /tmp/tflint.zip "https://github.com/terraform-linters/tflint/releases/download/${TFLINT_VERSION}/tflint_linux_amd64.zip"
+          sudo unzip -o -q /tmp/terraform.zip -d /usr/local/bin
+          sudo unzip -o -q /tmp/tflint.zip -d /usr/local/bin
+      - run: terraform fmt -check -recursive
+      - name: terraform validate
+        run: |
+          for dir in modules/aks-observability examples/basic; do
+            (cd "$dir" && terraform init -backend=false -input=false && terraform validate)
+          done
+      - name: tflint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}  # avoids API rate limits when fetching the ruleset
+        run: |
+          tflint --init
+          tflint --recursive --config "$PWD/.tflint.hcl"

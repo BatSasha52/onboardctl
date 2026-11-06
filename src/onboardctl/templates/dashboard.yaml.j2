@@ -1,0 +1,7 @@
+{% import "_macros.j2" as m %}
+apiVersion: v1
+kind: ConfigMap
+{{ m.metadata(names.dashboard, dashboard_labels, annotations, namespace) -}}
+data:
+  {{ name }}-slo.json: |-
+    {{ dashboard_json | indent(4) }}

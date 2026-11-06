@@ -1,0 +1,15 @@
+{% macro metadata(name, labels, annotations, namespace=none) %}
+metadata:
+  name: {{ name }}
+{% if namespace %}
+  namespace: {{ namespace }}
+{% endif %}
+  labels:
+{% for key, value in labels | dictsort %}
+    {{ key }}: {{ value | yaml_str }}
+{% endfor %}
+  annotations:
+{% for key, value in annotations | dictsort %}
+    {{ key }}: {{ value | yaml_str }}
+{% endfor %}
+{% endmacro %}

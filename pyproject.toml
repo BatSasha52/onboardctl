@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "onboardctl"
+version = "0.1.0"
+description = "Onboard a service to a Prometheus-based observability platform from one YAML file"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "jinja2>=3.1,<4",
+    "pydantic>=2.7,<3",
+    "pyyaml>=6.0,<7",
+    "requests>=2.31,<3",
+    "typer>=0.12,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.10",
+    "pytest>=8",
+    "ruff>=0.5",
+    "types-pyyaml",
+    "types-requests",
+]
+
+[project.scripts]
+onboardctl = "onboardctl.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+onboardctl = ["templates/*.j2"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "responder"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src", "responder", "demo"]
+plugins = ["pydantic.mypy"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["onboardctl", "responder", "tests"]

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: payments-checkout
+  labels:
+    app.kubernetes.io/managed-by: onboardctl
+    onboardctl/service: checkout-api
+    onboardctl/team: payments
+    pod-security.kubernetes.io/enforce: baseline
+  annotations:
+    onboardctl/description: "Public checkout API used by the web and mobile apps"
+    onboardctl/owners: "payments-oncall@example.com,@example-org/payments"
+    onboardctl/spec-hash: "7d28ca8a1a42e699"

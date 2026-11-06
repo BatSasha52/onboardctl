@@ -1,0 +1,26 @@
+apiVersion: onboardctl/v1
+name: notification-worker
+team: messaging
+owners:
+  - messaging-team@example.com
+description: Sends email and push notifications from a queue
+
+metrics:
+  port: metrics
+  interval: 30s
+
+slo:
+  window: 7d
+  availability:
+    target: 99
+
+alerting:
+  defaultReceiver: messaging-tickets
+  receivers:
+    - name: messaging-tickets
+      webhookUrl: https://hooks.example.com/messaging/tickets
+
+quota:
+  cpu: "1"
+  memory: 2Gi
+  pods: 10

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: invoice-batch-quota
+  namespace: invoice-batch
+  labels:
+    app.kubernetes.io/managed-by: onboardctl
+    onboardctl/service: invoice-batch
+    onboardctl/team: billing
+  annotations:
+    onboardctl/spec-hash: "383bd0dd7ac037ed"
+spec:
+  hard:
+    pods: "20"
+    requests.cpu: "2"
+    requests.memory: "4Gi"

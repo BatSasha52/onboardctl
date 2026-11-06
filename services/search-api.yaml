@@ -1,0 +1,29 @@
+apiVersion: onboardctl/v1
+name: search-api
+team: search
+owners:
+  - search-team@example.com
+  - "@example-org/search"
+description: Product search API
+namespace: search
+
+metrics:
+  port: http-metrics
+
+slo:
+  availability:
+    target: 99.5
+  latency:
+    thresholdSeconds: 0.5
+    target: 99
+
+alerting:
+  defaultReceiver: search-tickets
+  receivers:
+    - name: search-pager
+      webhookUrl: https://hooks.example.com/search/pager
+    - name: search-tickets
+      webhookUrl: https://hooks.example.com/search/tickets
+  routes:
+    - severity: critical
+      receiver: search-pager

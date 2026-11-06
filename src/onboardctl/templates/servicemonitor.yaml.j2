@@ -1,0 +1,23 @@
+{% import "_macros.j2" as m %}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+{{ m.metadata(names.service_monitor, labels, annotations, namespace) -}}
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ namespace }}
+  selector:
+    matchLabels:
+{% for key, value in selector | dictsort %}
+      {{ key }}: {{ value | yaml_str }}
+{% endfor %}
+  endpoints:
+    - port: {{ metrics.port }}
+      path: {{ metrics.path | yaml_str }}
+      interval: {{ metrics.interval }}
+      relabelings:
+        # The generated rules select on job="{{ name }}", whatever the
+        # Service object itself is called.
+        - action: replace
+          targetLabel: job
+          replacement: {{ name }}

@@ -1,0 +1,55 @@
+{% import "_macros.j2" as m %}
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+{{ m.metadata(names.alertmanager_config, labels, annotations, namespace) -}}
+spec:
+  # The operator also adds a namespace="{{ namespace }}" matcher, so this
+  # route only ever sees alerts from this namespace.
+  route:
+    receiver: {{ alerting.default_receiver }}
+    groupBy:
+      - alertname
+      - slo
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+    matchers:
+      - name: service
+        matchType: "="
+        value: {{ name }}
+{% if alerting.routes or remediation %}
+    routes:
+{% if remediation %}
+      # Copy of the remediation-labeled alert for the responder; `continue`
+      # lets it also reach the team's own routes below.
+      - receiver: {{ responder.receiver }}
+        continue: true
+        groupWait: 10s
+        matchers:
+          - name: remediation
+            matchType: "="
+            value: rollout-restart
+{% endif %}
+{% for route in alerting.routes %}
+      - receiver: {{ route.receiver }}
+        matchers:
+          - name: severity
+            matchType: "="
+            value: {{ route.severity }}
+{% endfor %}
+{% endif %}
+  receivers:
+{% for receiver in alerting.receivers %}
+    - name: {{ receiver.name }}
+{% if receiver.webhook_url %}
+      webhookConfigs:
+        - url: {{ receiver.webhook_url | yaml_str }}
+          sendResolved: true
+{% endif %}
+{% endfor %}
+{% if remediation %}
+    - name: {{ responder.receiver }}
+      webhookConfigs:
+        - url: {{ responder.url | yaml_str }}
+          sendResolved: false
+{% endif %}

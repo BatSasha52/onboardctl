@@ -1,0 +1,54 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: checkout-api-routing
+  namespace: payments-checkout
+  labels:
+    app.kubernetes.io/managed-by: onboardctl
+    onboardctl/service: checkout-api
+    onboardctl/team: payments
+  annotations:
+    onboardctl/spec-hash: "7d28ca8a1a42e699"
+spec:
+  # The operator also adds a namespace="payments-checkout" matcher, so this
+  # route only ever sees alerts from this namespace.
+  route:
+    receiver: payments-tickets
+    groupBy:
+      - alertname
+      - slo
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+    matchers:
+      - name: service
+        matchType: "="
+        value: checkout-api
+    routes:
+      # Copy of the remediation-labeled alert for the responder; `continue`
+      # lets it also reach the team's own routes below.
+      - receiver: onboardctl-responder
+        continue: true
+        groupWait: 10s
+        matchers:
+          - name: remediation
+            matchType: "="
+            value: rollout-restart
+      - receiver: payments-pager
+        matchers:
+          - name: severity
+            matchType: "="
+            value: critical
+  receivers:
+    - name: payments-pager
+      webhookConfigs:
+        - url: "https://hooks.example.com/payments/pager"
+          sendResolved: true
+    - name: payments-tickets
+      webhookConfigs:
+        - url: "https://hooks.example.com/payments/tickets"
+          sendResolved: true
+    - name: onboardctl-responder
+      webhookConfigs:
+        - url: "http://onboardctl-responder.onboardctl-system.svc:8080/alerts"
+          sendResolved: false

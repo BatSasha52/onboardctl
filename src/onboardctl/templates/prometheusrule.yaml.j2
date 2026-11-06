@@ -1,0 +1,31 @@
+{% import "_macros.j2" as m %}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+{{ m.metadata(names.prometheus_rule, labels, annotations, namespace) -}}
+spec:
+  groups:
+    - name: {{ rules.recording_group }}
+      rules:
+{% for rule in rules.recording %}
+        - record: {{ rule.record }}
+          expr: |-
+            {{ rule.expr | indent(12) }}
+{% endfor %}
+    - name: {{ rules.alert_group }}
+      rules:
+{% for rule in rules.alerts %}
+        - alert: {{ rule.alert }}
+          expr: |-
+            {{ rule.expr | indent(12) }}
+{% if rule.for_ %}
+          for: {{ rule.for_ }}
+{% endif %}
+          labels:
+{% for key, value in rule.labels | dictsort %}
+            {{ key }}: {{ value | yaml_str }}
+{% endfor %}
+          annotations:
+{% for key, value in rule.annotations | dictsort %}
+            {{ key }}: {{ value | yaml_str }}
+{% endfor %}
+{% endfor %}

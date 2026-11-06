@@ -1,0 +1,74 @@
+# Overrides for prometheus-community/kube-prometheus-stack on the dev cluster.
+# The chart version is pinned in scripts/dev-cluster.sh.
+
+# Gives predictable Service names (kps-prometheus, kps-alertmanager), which
+# are onboardctl's defaults.
+fullnameOverride: kps
+
+defaultRules:
+  rules:
+    windows: false
+
+# kubeadm binds these components' metrics to localhost on kind, so their
+# targets would stay down and add noise to every check.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+prometheus:
+  prometheusSpec:
+    scrapeInterval: 15s
+    evaluationInterval: 15s
+    # Pick up ServiceMonitors and PrometheusRules from every namespace,
+    # not only those that carry this Helm release's label.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    # No persistent volume: this is a throwaway cluster. Metric history is
+    # lost when the Prometheus pod restarts (see "Disaster recovery" in the
+    # README).
+    retention: 2d
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        memory: 2Gi
+
+alertmanager:
+  alertmanagerSpec:
+    # Only routing configs written by onboardctl, from any namespace. The
+    # operator adds a namespace matcher to each one, so a team's route can
+    # only receive alerts from its own namespace.
+    alertmanagerConfigSelector:
+      matchLabels:
+        app.kubernetes.io/managed-by: onboardctl
+    alertmanagerConfigNamespaceSelector: {}
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        memory: 256Mi
+
+grafana:
+  defaultDashboardsTimezone: utc
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      # Dashboards are created in each service's own namespace.
+      searchNamespace: ALL
+
+prometheus-node-exporter:
+  # Docker Desktop's VM does not mount / with shared propagation, which
+  # makes node-exporter fail to start when it mounts the host root.
+  hostRootFsMount:
+    enabled: false

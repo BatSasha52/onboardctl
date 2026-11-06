@@ -1,0 +1,138 @@
+# Unit tests for the rules rendered from examples/api-strict.yaml (99.9%
+# availability over 30d, so the error budget is 0.1%). Render first, then:
+#
+#   onboardctl render examples/api-strict.yaml -o rendered --rules-dir rendered/rules
+#   promtool test rules tests/promtool/checkout-api.test.yaml
+rule_files:
+  - ../../rendered/rules/checkout-api.rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  # 10% of requests fail: far above every threshold, all three tiers fire.
+  - interval: 1m
+    input_series:
+      - series: 'http_requests_total{namespace="payments-checkout", job="checkout-api", code="200"}'
+        values: '0+900x90'
+      - series: 'http_requests_total{namespace="payments-checkout", job="checkout-api", code="500"}'
+        values: '0+100x90'
+    promql_expr_test:
+      # Rounded because the ratio is computed in floating point.
+      - expr: round(slo:availability_error_ratio:rate5m, 0.0001)
+        eval_time: 10m
+        exp_samples:
+          - labels: '{namespace="payments-checkout", job="checkout-api"}'
+            value: 0.1
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: ErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              namespace: payments-checkout
+              job: checkout-api
+              service: checkout-api
+              team: payments
+              slo: availability
+              severity: critical
+              long_window: 1h
+              remediation: rollout-restart
+              deployment: checkout-api
+            exp_annotations:
+              summary: checkout-api is burning its availability error budget 14.4x faster than sustainable
+              description: "SLO: 99.9% of requests succeed over 30d. The error ratio over the last 1h and 5m is above 14.4 times the budget; at this rate 2% of the 30d budget is spent within 1h."
+              runbook_url: https://runbooks.example.com/payments/checkout-api
+          - exp_labels:
+              namespace: payments-checkout
+              job: checkout-api
+              service: checkout-api
+              team: payments
+              slo: availability
+              severity: critical
+              long_window: 6h
+            exp_annotations: &slow_page
+              summary: checkout-api is burning its availability error budget 6x faster than sustainable
+              description: "SLO: 99.9% of requests succeed over 30d. The error ratio over the last 6h and 30m is above 6 times the budget; at this rate 5% of the 30d budget is spent within 6h."
+              runbook_url: https://runbooks.example.com/payments/checkout-api
+          - exp_labels:
+              namespace: payments-checkout
+              job: checkout-api
+              service: checkout-api
+              team: payments
+              slo: availability
+              severity: warning
+              long_window: 3d
+            exp_annotations: &ticket
+              summary: checkout-api is burning its availability error budget 1x faster than sustainable
+              description: "SLO: 99.9% of requests succeed over 30d. The error ratio over the last 3d and 6h is above 1 times the budget; at this rate 10% of the 30d budget is spent within 3d."
+              runbook_url: https://runbooks.example.com/payments/checkout-api
+
+  # 0.8% of requests fail: above 6x (0.6%) but below 14.4x (1.44%), so the
+  # slow page and the ticket fire and the fast page does not.
+  - interval: 1m
+    input_series:
+      - series: 'http_requests_total{namespace="payments-checkout", job="checkout-api", code="200"}'
+        values: '0+992x90'
+      - series: 'http_requests_total{namespace="payments-checkout", job="checkout-api", code="500"}'
+        values: '0+8x90'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: ErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              namespace: payments-checkout
+              job: checkout-api
+              service: checkout-api
+              team: payments
+              slo: availability
+              severity: critical
+              long_window: 6h
+            exp_annotations: *slow_page
+          - exp_labels:
+              namespace: payments-checkout
+              job: checkout-api
+              service: checkout-api
+              team: payments
+              slo: availability
+              severity: warning
+              long_window: 3d
+            exp_annotations: *ticket
+
+  # 0.05% of requests fail: inside the budget, nothing fires.
+  - interval: 1m
+    input_series:
+      - series: 'http_requests_total{namespace="payments-checkout", job="checkout-api", code="200"}'
+        values: '0+1999x90'
+      - series: 'http_requests_total{namespace="payments-checkout", job="checkout-api", code="500"}'
+        values: '0+1x90'
+      - series: 'up{namespace="payments-checkout", job="checkout-api"}'
+        values: '1x90'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: ErrorBudgetBurn
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: ScrapeTargetMissing
+        exp_alerts: []
+
+  # No up series at all: the target-missing alert fires after its 5m for.
+  - interval: 1m
+    input_series:
+      - series: 'http_requests_total{namespace="payments-checkout", job="checkout-api", code="200"}'
+        values: '0+100x30'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: ScrapeTargetMissing
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: ScrapeTargetMissing
+        exp_alerts:
+          - exp_labels:
+              namespace: payments-checkout
+              job: checkout-api
+              service: checkout-api
+              team: payments
+              severity: warning
+            exp_annotations:
+              summary: Prometheus cannot scrape checkout-api
+              description: No healthy scrape target for this service for 5 minutes, so its SLO rules have no data and its burn-rate alerts cannot fire.
+              runbook_url: https://runbooks.example.com/payments/checkout-api

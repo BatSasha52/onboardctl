@@ -1,0 +1,28 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: checkout-api
+  namespace: payments-checkout
+  labels:
+    app.kubernetes.io/managed-by: onboardctl
+    onboardctl/service: checkout-api
+    onboardctl/team: payments
+  annotations:
+    onboardctl/spec-hash: "7d28ca8a1a42e699"
+spec:
+  namespaceSelector:
+    matchNames:
+      - payments-checkout
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: checkout-api
+  endpoints:
+    - port: http-metrics
+      path: /metrics
+      interval: 15s
+      relabelings:
+        # The generated rules select on job="checkout-api", whatever the
+        # Service object itself is called.
+        - action: replace
+          targetLabel: job
+          replacement: checkout-api
